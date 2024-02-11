@@ -1,7 +1,7 @@
 import curses
 from curses.textpad import rectangle
 from utils import (explore_dir, check_md_tags_headers, inspect_md_tags, demo_suggest_tags, write_tags, 
-                   write_header, remove_tags)
+                   write_header, remove_tags, inspect_tags)
 
 
 def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
@@ -166,33 +166,128 @@ def disp_fix_headers(stdscr, vault, mds, ticked):
 
 def disp_inspect_tags(stdscr, vault, mds, ticked):
     mds = [md for md, tick in zip(mds, ticked) if tick]
-
+    tags = inspect_tags(vault, mds)
+    tag_ticks = [[True for _ in range(len(tags[md]))] for md in mds]
     stdscr.clear()
     stdscr.addstr(0, 1, 'Current Vault: '+ vault, curses.A_UNDERLINE)
-    
-    row = 0
-    for md in mds:
-        row+=1
-        tags = inspect_md_tags(vault, md)
-        stdscr.addstr(row, 1, f"{md[:-3]}:", colors["CYAN_AND_BLACK"]); row+=1
-        for tag in tags:
-            stdscr.addstr(row, 1, f" * {tag}"); row+=1
+    stdscr.addstr(1, 1, "Existing tags:", colors['YELLOW_AND_BLACK'])
 
-    stdscr.addstr(curses.LINES - 2, 1 , "[i]:back to selection")
+    stdscr.addstr(curses.LINES - 3, len("[s]:select/deselect") + 2 , "[r]:remove tags in ")
+    stdscr.addstr("red", colors["RED_AND_BLACK"])
+    stdscr.addstr(curses.LINES - 3, 1, "[s]:select/deselect")
+    stdscr.addstr(curses.LINES - 2, 1 , "[i]:back")
     stdscr.addstr(curses.LINES - 2, curses.COLS - 10, "[q]:quit")
 
     stdscr.refresh()
+    selection_md_id = 0
+    selection_tag_id = 0
     while True:
         try:
             key = stdscr.getkey()
         except:
             key = None
 
-        if key == "i":
+        if key == "KEY_UP":
+            selection_md_id-=1
+        elif key == "KEY_DOWN":
+            selection_md_id+=1
+        elif key == "KEY_LEFT":
+            selection_tag_id-=1
+        elif key == "KEY_RIGHT":
+            selection_tag_id+=1
+
+        elif key == "s":
+            tag_ticks[selection_md_id][selection_tag_id] = not tag_ticks[selection_md_id][selection_tag_id]
+
+        elif key == "i":
             disp_md_selection(stdscr, vault, ticked)
         elif key == "r":
-            remove_tags(stdscr, vault, mds, ticked)
+            tags_to_remove = {md: [tag for tag, tick in zip(tags[md], ticked) if not tick] for md, ticked in zip(mds, tag_ticks)}
+            stdscr.clear()
+            stdscr.addstr(2, 1, "The following tags will be removed:", colors["YELLOW_AND_BLACK"])
+            row = 2
+            for md in mds:
+                if len(tags_to_remove[md])>0:
+                    row+=1; stdscr.addstr(row, 1, f"{md[:-3]}:", colors["CYAN_AND_BLACK"])
+                    row+=1; stdscr.addstr(row, 1, "")
+                    
+                    for tag in tags_to_remove[md]:
+                        stdscr.addstr(f'{tag} ', colors["RED_AND_BLACK"])
 
+            disp_confirmation_screen(stdscr, vault, ticked, remove_tags, vault, mds, tags_to_remove)
+
+        elif key == "q":
+            quit()
+    
+        if len(mds)>0:
+            try:
+                selection_tag_id = selection_tag_id % len(tags[mds[selection_md_id]])
+            except:
+                if key == "KEY_UP":
+                    selection_md_id-=1
+                elif key == "KEY_DOWN":
+                    selection_md_id+=1
+
+            selection_md_id = selection_md_id % len(mds)
+            row = 1
+            md_id = 0
+            for md in mds:
+                row+=1
+                stdscr.addstr(row, 1, f"{md[:-3]}:", colors["CYAN_AND_BLACK"])
+                row+=1
+                stdscr.addstr(row, 1, "")
+                
+                tag_id = 0
+                for tag in tags[md]:
+                    if (selection_tag_id==tag_id)&(selection_md_id==md_id):
+
+                        if tag_ticks[md_id][tag_id]:
+                            color = colors["GREEN_AND_WHITE"]
+                        else:
+                            color = colors["RED_AND_WHITE"]
+                    else:
+                        if tag_ticks[md_id][tag_id]:
+                            color = colors["GREEN_AND_BLACK"]
+                        else:
+                            color = colors["RED_AND_BLACK"]
+                    
+                    stdscr.addstr(f"{tag}", color)
+                    stdscr.addstr(f" ")
+                    tag_id+=1
+                row+=1
+                md_id+=1
+
+
+def disp_confirmation_screen(stdscr, vault, ticked, proceed_fn, *fn_args):
+    stdscr.addstr(0, 1, 'Current Vault: '+ vault, curses.A_UNDERLINE)
+    stdscr.addstr(1, 1, "Are you sure you want to proceed?", colors['YELLOW_AND_BLACK'])
+    stdscr.addstr(curses.LINES - 2, len("[y]:yes") + 2, "[n]:no")
+    stdscr.addstr(curses.LINES - 2, 1 , "[y]:yes")
+    stdscr.addstr(curses.LINES - 2, curses.COLS - 10, "[q]:quit")
+
+    stdscr.refresh()
+    
+    while True:
+        try:
+            key = stdscr.getkey()
+        except:
+            key = None
+
+        if key == "y":
+            proceed_fn(*fn_args)
+            stdscr.clear()
+            stdscr.addstr(0, 1, "Operation successful.", colors['YELLOW_AND_BLACK'])
+            stdscr.addstr(curses.LINES - 2, curses.COLS - 10, "[q]:quit")
+            stdscr.addstr(curses.LINES - 2, 1, "[any]:back")
+
+            stdscr.refresh()
+            stdscr.nodelay(False)
+            stdscr.getkey()
+            disp_md_selection(stdscr, vault, ticked)
+
+        elif key == "n":
+            disp_md_selection(stdscr, vault, ticked)
+        
         elif key == "q":
             quit()
 

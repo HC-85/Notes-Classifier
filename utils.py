@@ -38,7 +38,7 @@ def check_md_tags_headers(vault_path:str, source: Union[List[str], str]):
     return no_tags, multi_tags
 
 
-
+#TODO: check for repeated tags
 def check_tags_headers(vault_path:str, source: Union[List[str], str], explore_subdirs=False, no_tags = [], multi_tags = [], depth = 0):
     try:
         files_path = os.path.join(os.getcwd(), source)
@@ -86,32 +86,21 @@ def check_tags_headers(vault_path:str, source: Union[List[str], str], explore_su
         return no_tags, multi_tags
 
 
-def inspect_tags(path):
-    md_files, subdirs = explore_dir(path)
-    tagset = set()
-    for md_name in md_files:
-        tag_flag = False
-        with open(os.path.join(path, md_name), 'r', encoding='utf-8') as f:
-            text = f.read()
-        
-        for line in text.split('\n'):
-            if line == '###### Tags':
-                tag_flag = True
-                continue
-            if tag_flag:
-                tags = re.findall(r'#([^ ]+)', line)
-                if tags:
-                    tagset = tagset.union(set(tags))
-                else:
-                    break
-
-    tagset = sorted(list(tagset))
-    for tag in tagset:
-        print(tag)
+def inspect_tags(vault, mds):
+    tags = {}
+    for md in mds:
+        target = os.path.join(vault, md)
+        with open(target, 'r', encoding='utf-8') as file:
+            line = file.readline()
+            while line:
+                if line == '###### Tags\n':
+                    tags[md] = file.read().split()
+                    
+                line = file.readline()
+    return tags
 
 
 def inspect_md_tags(vault_path:str, md: Union[List[str], str]):
-    
     tagset = set()
     tag_flag = False
     with open(os.path.join(vault_path, md), 'r', encoding='utf-8') as f:
@@ -180,7 +169,7 @@ def write_header(vault = 'Software', md = 'test.md'):
         file.write('\n###### Tags\n')
 
 
-def write_tags(vault = 'Software', md = 'test.md', tags = ['bruh', 'nice']):
+def write_tags(vault, md, tags):
     target = os.path.join(vault, md)
     with open(target, 'r') as file:
         text = file.readlines()
@@ -193,19 +182,20 @@ def write_tags(vault = 'Software', md = 'test.md', tags = ['bruh', 'nice']):
         hash_tagged = [f'#{tag} ' for tag in tags]
         md.write(str().join(hash_tagged))
 
-#TODO: find way to not store the whole file in memory using IO stream stuff
-def remove_tags(vault, md, tags_to_remove):
-    target = os.path.join(vault, md)
-    with open(target, 'r+', encoding = 'utf-8') as file:
-        line = file.readline()
-        while line:
-            if line == '###### Tags\n':
-                tag_loc = file.tell()
-                tags = file.read()
-                for tag in tags_to_remove:
-                    tags = tags.replace(tag, '').strip()
-                file.seek(tag_loc)
-                file.write(tags)
-                file.truncate(file.tell())
-                break
+#TODO: find way to not store the whole file in memory using IO stream stuff just for fun
+def remove_tags(vault, mds, tags_to_remove):
+    for md in mds:
+        target = os.path.join(vault, md)
+        with open(target, 'r+', encoding = 'utf-8') as file:
             line = file.readline()
+            while line:
+                if line == '###### Tags\n':
+                    tag_loc = file.tell()
+                    tags = file.read()
+                    for tag in tags_to_remove[md]:
+                        tags = tags.replace(tag, '').strip()
+                    file.seek(tag_loc)
+                    file.write(tags)
+                    file.truncate(file.tell())
+                    break
+                line = file.readline()
