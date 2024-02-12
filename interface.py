@@ -1,15 +1,15 @@
 import curses
 from curses.textpad import rectangle
 from utils import (explore_dir, check_md_tags_headers, inspect_md_tags, demo_suggest_tags, write_tags, 
-                   write_header, remove_tags, inspect_tags)
+                   write_header, remove_tags, inspect_tags, append_tags)
 
 
 def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
     mds = [md for md, tick in zip(mds, ticked) if tick]
     tag_ticks = [[False for _ in range(n_suggestions)] for _ in mds]
-    tags = []
+    tags = {}
     for md in mds:
-        tags.append(demo_suggest_tags(vault, md, n_suggestions))
+        tags[md] = demo_suggest_tags(vault, md, n_suggestions)
 
     stdscr.clear()
     stdscr.addstr(0, 1, 'Current Vault: '+ vault, curses.A_UNDERLINE)
@@ -42,6 +42,19 @@ def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
         elif key == "t":
             disp_md_selection(stdscr, vault, ticked)
 
+        elif key == "a":
+            tags_to_add = {md: [tag for tag, tick in zip(tags[md], ticked) if tick] for md, ticked in zip(mds, tag_ticks)}
+            append_tags(vault, mds, tags_to_add)
+            stdscr.clear()
+            stdscr.addstr(0, 1, 'Current Vault: '+ vault, curses.A_UNDERLINE)
+            stdscr.addstr(1, 1, "Operation successful.", colors['YELLOW_AND_BLACK'])
+            stdscr.addstr(curses.LINES - 2, curses.COLS - 10, "[q]:quit")
+            stdscr.addstr(curses.LINES - 2, 1, "[any]:back")
+            stdscr.refresh()
+            stdscr.nodelay(False)
+            stdscr.getkey()
+            disp_md_selection(stdscr, vault, ticked)
+
         elif key == "q":
             quit()
             
@@ -58,7 +71,7 @@ def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
                 stdscr.addstr(row, 1, "")
                 
                 tag_id = 0
-                for tag in tags[md_id]:
+                for tag in tags[md]:
                     if (selection_tag_id==tag_id)&(selection_md_id==md_id):
 
                         if tag_ticks[md_id][tag_id]:
@@ -80,6 +93,7 @@ def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
         stdscr.refresh()
 
 #TODO: check if header is at the end of the file
+#TODO: tool to fix tags formatting
 def disp_check_headers(stdscr, vault, mds, ticked):
     mds = [md for md, tick in zip(mds, ticked) if tick]
 

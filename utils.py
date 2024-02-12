@@ -90,7 +90,7 @@ def inspect_tags(vault, mds):
     tags = {}
     for md in mds:
         target = os.path.join(vault, md)
-        with open(target, 'r', encoding='utf-8') as file:
+        with open(rf"{target}", 'r', encoding='utf-8') as file:
             line = file.readline()
             while line:
                 if line == '###### Tags\n':
@@ -169,6 +169,14 @@ def write_header(vault = 'Software', md = 'test.md'):
         file.write('\n###### Tags\n')
 
 
+def append_tags(vault, mds, tags_to_append):
+    for md in mds:
+        target = os.path.join(vault, md)
+        with open(target, 'a', encoding = 'utf-8') as file:
+            for tag in tags_to_append[md]:
+                file.write(f' #{tag}')
+
+
 def write_tags(vault, md, tags):
     target = os.path.join(vault, md)
     with open(target, 'r') as file:
@@ -182,7 +190,24 @@ def write_tags(vault, md, tags):
         hash_tagged = [f'#{tag} ' for tag in tags]
         md.write(str().join(hash_tagged))
 
-#TODO: find way to not store the whole file in memory using IO stream stuff just for fun
+
+def add_tags(vault, mds, tags_to_add):
+    for md in mds:
+        target = os.path.join(vault, md)
+        with open(target, 'r+', encoding = 'utf-8') as file:
+            line = file.readline()
+            while line:
+                if line == '###### Tags\n':
+                    tag_loc = file.tell()
+                    tags = file.read().split()
+                    new_tags = [f'#{tag}' for tag in tags_to_add[md]]
+                    tags.extend(new_tags)
+                    file.seek(tag_loc)
+                    for tag in tags:
+                        file.write(f" {tag}")
+                line = file.readline()
+
+
 def remove_tags(vault, mds, tags_to_remove):
     for md in mds:
         target = os.path.join(vault, md)
