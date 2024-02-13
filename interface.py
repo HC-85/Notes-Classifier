@@ -1,7 +1,9 @@
 import curses
 from curses.textpad import rectangle
-from utils import (explore_dir, check_md_tags_headers, inspect_md_tags, demo_suggest_tags, write_tags, 
-                   write_header, remove_tags, inspect_tags, append_tags)
+from issues import check_md_tags_headers, write_header
+from inspection import inspect_tags, remove_tags
+from suggest import demo_suggest_tags, append_tags
+from utils import explore_dir
 
 
 def disp_suggest_tags(stdscr, vault, mds, ticked, n_suggestions=3):
