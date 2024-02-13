@@ -217,6 +217,7 @@ def disp_inspect_tags(stdscr, vault, mds, ticked):
 
         elif key == "i":
             disp_md_selection(stdscr, vault, ticked)
+            
         elif key == "r":
             tags_to_remove = {md: [tag for tag, tick in zip(tags[md], ticked) if not tick] for md, ticked in zip(mds, tag_ticks)}
             stdscr.clear()
@@ -236,6 +237,7 @@ def disp_inspect_tags(stdscr, vault, mds, ticked):
             quit()
     
         if len(mds)>0:
+            selection_md_id = selection_md_id % len(mds)
             try:
                 selection_tag_id = selection_tag_id % len(tags[mds[selection_md_id]])
             except:
@@ -244,7 +246,6 @@ def disp_inspect_tags(stdscr, vault, mds, ticked):
                 elif key == "KEY_DOWN":
                     selection_md_id+=1
 
-            selection_md_id = selection_md_id % len(mds)
             row = 1
             md_id = 0
             for md in mds:
@@ -347,12 +348,15 @@ def disp_md_selection(stdscr, vault, ticked):
                 ticked = [True for _ in mds]
 
         elif key == "c":
+            md_selection_pad.clear()
             disp_check_headers(stdscr, vault, mds, ticked)
 
         elif key == "i":
+            md_selection_pad.clear()
             disp_inspect_tags(stdscr, vault, mds, ticked)
 
         elif key == "t":
+            md_selection_pad.clear()
             disp_suggest_tags(stdscr, vault, mds, ticked)
 
         elif key == "q":
