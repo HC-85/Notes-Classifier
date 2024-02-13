@@ -314,7 +314,6 @@ def disp_md_selection(stdscr, vault, ticked):
     mds = mds if isinstance(mds, list) else [mds]
     if ticked is None:
         ticked = [True for _ in mds]
-    height, width = stdscr.getmaxyx()
 
     stdscr.addstr(0, 1, 'Current Vault: ' + vault, curses.A_UNDERLINE)
     stdscr.addstr(1, 1, "Select files to process:", colors['YELLOW_AND_BLACK'])
@@ -322,6 +321,8 @@ def disp_md_selection(stdscr, vault, ticked):
     
     stdscr.nodelay(True)
     selection = 0
+    vertical_pad_offset = 0
+    max_vp_offset = len(mds) - (curses.LINES - 7)
     while True:
         try:
             key = stdscr.getkey()
@@ -330,11 +331,15 @@ def disp_md_selection(stdscr, vault, ticked):
 
         if key == "KEY_UP":
             selection-=1
+            vertical_pad_offset = ((vertical_pad_offset - 1) % max_vp_offset) if (vertical_pad_offset > selection) else (vertical_pad_offset % max_vp_offset)
+
         elif key == "KEY_DOWN":
             selection+=1
+            vertical_pad_offset = ((vertical_pad_offset + 1) % max_vp_offset) if ((selection-vertical_pad_offset) > (curses.LINES - 7)) else (vertical_pad_offset % max_vp_offset)
 
         elif key == "s":
             ticked[selection] = not ticked[selection]
+
         elif key == "a":
             if all(ticked):
                 ticked = [False for _ in mds]
@@ -354,20 +359,24 @@ def disp_md_selection(stdscr, vault, ticked):
             quit()
 
         selection = selection % len(mds)
-        row = 2
+
+        md_selection_pad = curses.newpad(len(mds), curses.COLS)
+        row = 0
         for i, md in enumerate(mds):
             pre = '+' if ticked[i] else '-'
             pre_color = colors['GREEN_AND_BLACK'] if ticked[i] else colors['RED_AND_BLACK']
-            stdscr.addstr(row, 1, pre, pre_color)
-            stdscr.addstr(row, 3, md[:-3], curses.A_STANDOUT if selection == i else colors["CYAN_AND_BLACK"]) 
+            md_selection_pad.addstr(row, 1, pre, pre_color)
+            md_selection_pad.addstr(row, 3, md[:-3], curses.A_STANDOUT if selection == i else colors["CYAN_AND_BLACK"]) 
             row+=1
 
-        stdscr.addstr(height - 3, (len("[s]:select/deselect [a]:select/deselect all") + 2), "[t]:suggest tags")
-        stdscr.addstr(height - 3, 1, "[c]:check headers")
-        stdscr.addstr(height - 3, len("[s]:select/deselect") + 2, "[i]:inspect tags")
-        stdscr.addstr(height - 2, 1, "[s]:select/deselect")
-        stdscr.addstr(height - 2, len("[s]:select/deselect") + 2, "[a]:select/deselect all")
-        stdscr.addstr(height - 2, width - 10, "[q]:quit")
+        md_selection_pad.refresh(vertical_pad_offset, 0, 2, 0, curses.LINES - 5, curses.COLS-1)
+
+        stdscr.addstr(curses.LINES - 3, (len("[s]:select/deselect [a]:select/deselect all") + 2), "[t]:suggest tags")
+        stdscr.addstr(curses.LINES - 3, 1, "[c]:check headers")
+        stdscr.addstr(curses.LINES - 3, len("[s]:select/deselect") + 2, "[i]:inspect tags")
+        stdscr.addstr(curses.LINES - 2, 1, "[s]:select/deselect")
+        stdscr.addstr(curses.LINES - 2, len("[s]:select/deselect") + 2, "[a]:select/deselect all")
+        stdscr.addstr(curses.LINES - 2, curses.COLS - 10, "[q]:quit")
         
         stdscr.refresh()
 
